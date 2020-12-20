@@ -12,8 +12,9 @@ type Vars struct {
 	// Default is '$', e.g. $id1 would be treated as variable.
 	VarPrefix string
 
-	mu   sync.Mutex
-	vars map[string]interface{}
+	mu    sync.Mutex
+	vars  map[string]interface{}
+	onSet []func(key string, val interface{})
 }
 
 // Reset removes all variables.
@@ -22,6 +23,7 @@ func (v *Vars) Reset() {
 	defer v.mu.Unlock()
 
 	v.vars = make(map[string]interface{})
+	v.onSet = nil
 }
 
 // IsVar checks if string looks like a variable name.
@@ -54,6 +56,20 @@ func (v *Vars) Set(key string, val interface{}) {
 	}
 
 	v.vars[key] = val
+
+	for _, f := range v.onSet {
+		f(key, val)
+	}
+}
+
+// OnSet adds callback to invoke when variable is set.
+//
+// All callbacks are removed on Reset.
+func (v *Vars) OnSet(f func(key string, val interface{})) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	v.onSet = append(v.onSet, f)
 }
 
 // GetAll returns all variables with values.
