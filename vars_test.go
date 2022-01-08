@@ -1,6 +1,8 @@
 package shared_test
 
 import (
+	"context"
+	"sync"
 	"testing"
 
 	"github.com/bool64/shared"
@@ -30,4 +32,36 @@ func TestVars_GetAll(t *testing.T) {
 
 	v.Reset()
 	assert.Equal(t, map[string]interface{}{}, v.GetAll())
+}
+
+func TestVars_Fork(t *testing.T) {
+	v := shared.Vars{}
+	v.Set("k", "v")
+
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < 50; i++ {
+		i := i
+
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			ctx, vi := v.Fork(context.Background())
+
+			assert.Equal(t, map[string]interface{}{"k": "v"}, vi.GetAll())
+			vi.Set("ki", i)
+			assert.Equal(t, map[string]interface{}{"k": "v", "ki": i}, vi.GetAll())
+			vi.Set("k", i)
+			assert.Equal(t, map[string]interface{}{"k": i, "ki": i}, vi.GetAll())
+
+			// Forking with already instrumented context is a no op.
+			ctx2, vi2 := v.Fork(ctx)
+			assert.Equal(t, ctx, ctx2)
+			assert.Equal(t, vi, vi2)
+		}()
+	}
+
+	assert.Equal(t, map[string]interface{}{"k": "v"}, v.GetAll())
 }

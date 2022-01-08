@@ -2,6 +2,7 @@
 package shared
 
 import (
+	"context"
 	"strings"
 	"sync"
 )
@@ -26,6 +27,31 @@ func (v *Vars) Reset() {
 	v.onSet = nil
 }
 
+// Fork instruments context with a copy of Vars or returns Vars that are already in context.
+func (v *Vars) Fork(ctx context.Context) (context.Context, *Vars) {
+	if vc, ok := ctx.Value(ctxKey{}).(*Vars); ok {
+		return ctx, vc
+	}
+
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	vc := &Vars{
+		VarPrefix: v.VarPrefix,
+		onSet:     v.onSet,
+	}
+
+	if len(v.vars) > 0 {
+		vc.vars = make(map[string]interface{})
+
+		for k, v := range v.vars {
+			vc.vars[k] = v
+		}
+	}
+
+	return context.WithValue(ctx, ctxKey{}, vc), vc
+}
+
 // IsVar checks if string looks like a variable name.
 func (v *Vars) IsVar(s string) bool {
 	varPrefix := v.VarPrefix
@@ -35,6 +61,8 @@ func (v *Vars) IsVar(s string) bool {
 
 	return strings.HasPrefix(s, varPrefix)
 }
+
+type ctxKey struct{}
 
 // Get returns variable value if is exists.
 func (v *Vars) Get(s string) (interface{}, bool) {
