@@ -7,4 +7,4 @@
 ![Code lines](https://sloc.xyz/github/bool64/shared/?category=code)
 ![Comments](https://sloc.xyz/github/bool64/shared/?category=comments)
 
-Shared provides space and contract to share variables between test helpers.
+Shared provides space and contract to share variables between test helpers and libraries.
