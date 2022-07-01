@@ -29,27 +29,40 @@ func (v *Vars) Reset() {
 
 // Fork instruments context with a copy of Vars or returns Vars that are already in context.
 func (v *Vars) Fork(ctx context.Context) (context.Context, *Vars) {
-	if vc, ok := ctx.Value(ctxKey{}).(*Vars); ok {
+	if vc, ok := ctx.Value(ctxKeyInstance{}).(*Vars); ok {
 		return ctx, vc
 	}
 
-	v.mu.Lock()
-	defer v.mu.Unlock()
+	vc := &Vars{}
 
-	vc := &Vars{
-		VarPrefix: v.VarPrefix,
-		onSet:     v.onSet,
+	if v != nil {
+		v.mu.Lock()
+		defer v.mu.Unlock()
+
+		vc.VarPrefix = v.VarPrefix
+		vc.onSet = v.onSet
+
+		if len(v.vars) > 0 {
+			vc.vars = make(map[string]interface{})
+
+			for k, v := range v.vars {
+				vc.vars[k] = v
+			}
+		}
 	}
 
-	if len(v.vars) > 0 {
-		vc.vars = make(map[string]interface{})
+	gv := VarsFromContext(ctx)
+	if len(gv) > 0 {
+		if vc.vars == nil {
+			vc.vars = make(map[string]interface{})
+		}
 
-		for k, v := range v.vars {
+		for k, v := range VarsFromContext(ctx) {
 			vc.vars[k] = v
 		}
 	}
 
-	return context.WithValue(ctx, ctxKey{}, vc), vc
+	return context.WithValue(ctx, ctxKeyInstance{}, vc), vc
 }
 
 // IsVar checks if string looks like a variable name.
@@ -62,7 +75,10 @@ func (v *Vars) IsVar(s string) bool {
 	return strings.HasPrefix(s, varPrefix)
 }
 
-type ctxKey struct{}
+type (
+	ctxKeyInstance struct{}
+	ctxKey         struct{}
+)
 
 // Get returns variable value if is exists.
 func (v *Vars) Get(s string) (interface{}, bool) {
@@ -111,4 +127,38 @@ func (v *Vars) GetAll() map[string]interface{} {
 	}
 
 	return res
+}
+
+// VarToContext adds variable to context.
+func VarToContext(ctx context.Context, key string, value interface{}) context.Context {
+	if vc, ok := ctx.Value(ctxKeyInstance{}).(*Vars); ok {
+		vc.Set(key, value)
+
+		return ctx
+	}
+
+	m, ok := ctx.Value(ctxKey{}).(map[string]interface{})
+	if !ok {
+		m = make(map[string]interface{})
+
+		ctx = context.WithValue(ctx, ctxKey{}, m)
+	}
+
+	m[key] = value
+
+	return ctx
+}
+
+// VarsFromContext returns variables from context.
+func VarsFromContext(ctx context.Context) map[string]interface{} {
+	if vc, ok := ctx.Value(ctxKeyInstance{}).(*Vars); ok {
+		return vc.vars
+	}
+
+	m, ok := ctx.Value(ctxKey{}).(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	return m
 }

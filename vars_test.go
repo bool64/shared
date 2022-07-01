@@ -65,3 +65,26 @@ func TestVars_Fork(t *testing.T) {
 
 	assert.Equal(t, map[string]interface{}{"k": "v"}, v.GetAll())
 }
+
+func TestVarToContext(t *testing.T) {
+	ctx := context.Background()
+	ctx = shared.VarToContext(ctx, "$foo", "bar")
+
+	assert.Equal(t, map[string]interface{}{"$foo": "bar"}, shared.VarsFromContext(ctx))
+
+	var nilParent *shared.Vars
+
+	npCtx, vv := nilParent.Fork(ctx)
+	assert.Equal(t, map[string]interface{}{"$foo": "bar"}, shared.VarsFromContext(npCtx))
+	assert.Equal(t, map[string]interface{}{"$foo": "bar"}, vv.GetAll())
+
+	parent := shared.Vars{}
+	parent.Set("$baz", "qux")
+
+	pCtx, vv := parent.Fork(ctx)
+	assert.Equal(t, map[string]interface{}{"$foo": "bar", "$baz": "qux"}, shared.VarsFromContext(pCtx))
+	assert.Equal(t, map[string]interface{}{"$foo": "bar", "$baz": "qux"}, vv.GetAll())
+
+	ctx = shared.VarToContext(pCtx, "$quux", true)
+	assert.Equal(t, map[string]interface{}{"$foo": "bar", "$baz": "qux", "$quux": true}, shared.VarsFromContext(ctx))
+}
