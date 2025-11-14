@@ -2,6 +2,7 @@ package shared_test
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"testing"
 
@@ -87,4 +88,32 @@ func TestVarToContext(t *testing.T) {
 
 	ctx = shared.VarToContext(pCtx, "$quux", true)
 	assert.Equal(t, map[string]interface{}{"$foo": "bar", "$baz": "qux", "$quux": true}, shared.VarsFromContext(ctx))
+}
+
+func TestDecodeJSONNumber(t *testing.T) {
+	assert.Equal(t, int64(1), shared.DecodeJSONNumber("1"))
+	assert.Equal(t, int64(-1), shared.DecodeJSONNumber("-1"))
+	assert.Equal(t, 1.0, shared.DecodeJSONNumber("1.0"))
+	assert.Equal(t, 1.23, shared.DecodeJSONNumber("1.23"))
+	assert.Equal(t, uint64(17294094973108486143), shared.DecodeJSONNumber("17294094973108486143"))
+}
+
+func TestVars_Set_jsonNumber(t *testing.T) {
+	v := shared.Vars{}
+
+	val := map[string]interface{}{
+		"foo": json.Number("123"),
+		"bar": json.Number("123.456"),
+		"baz": []interface{}{json.Number("123"), json.Number("123.456"), 789},
+	}
+
+	v.Set("test", val)
+
+	val2, ok := v.Get("test")
+	assert.True(t, ok)
+	assert.Equal(t, map[string]interface{}{
+		"foo": int64(123),
+		"bar": 123.456,
+		"baz": []interface{}{int64(123), 123.456, 789},
+	}, val2)
 }
