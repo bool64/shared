@@ -3,6 +3,9 @@ package shared
 
 import (
 	"context"
+	"encoding/json"
+	"math"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -99,6 +102,8 @@ func (v *Vars) Set(key string, val interface{}) {
 		v.vars = make(map[string]interface{})
 	}
 
+	val = decodeJSONNumbers(val)
+
 	v.vars[key] = val
 
 	for _, f := range v.onSet {
@@ -161,4 +166,48 @@ func VarsFromContext(ctx context.Context) map[string]interface{} {
 	}
 
 	return m
+}
+
+func decodeJSONNumbers(v interface{}) interface{} {
+	switch vv := v.(type) {
+	case json.Number:
+		return DecodeJSONNumber(vv)
+	case []interface{}:
+		for i, e := range vv {
+			vv[i] = decodeJSONNumbers(e)
+		}
+
+		return vv
+	case map[string]interface{}:
+		for k, e := range vv {
+			vv[k] = decodeJSONNumbers(e)
+		}
+		return vv
+	}
+
+	return v
+}
+
+// DecodeJSONNumber tries to decode a json.Number into a most appropriate type (unit64, int64, float64).
+// If nothing works, json.Number is returned as is.
+func DecodeJSONNumber(n json.Number) interface{} {
+	var v interface{} = n
+
+	if strings.Contains(n.String(), ".") {
+		if f, err := n.Float64(); err == nil {
+			v = f
+		}
+	} else {
+		if u, err := strconv.ParseUint(n.String(), 10, 64); err == nil {
+			v = u
+
+			if u <= uint64(math.MaxInt64) {
+				v = int64(u)
+			}
+		} else if i, err := n.Int64(); err == nil {
+			v = i
+		}
+	}
+
+	return v
 }
