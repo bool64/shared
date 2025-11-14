@@ -88,3 +88,11 @@ func TestVarToContext(t *testing.T) {
 	ctx = shared.VarToContext(pCtx, "$quux", true)
 	assert.Equal(t, map[string]interface{}{"$foo": "bar", "$baz": "qux", "$quux": true}, shared.VarsFromContext(ctx))
 }
+
+func TestDecodeJSONNumber(t *testing.T) {
+	assert.Equal(t, int64(1), shared.DecodeJSONNumber("1"))
+	assert.Equal(t, int64(-1), shared.DecodeJSONNumber("-1"))
+	assert.Equal(t, 1.0, shared.DecodeJSONNumber("1.0"))
+	assert.Equal(t, 1.23, shared.DecodeJSONNumber("1.23"))
+	assert.Equal(t, uint64(17294094973108486143), shared.DecodeJSONNumber("17294094973108486143"))
+}
