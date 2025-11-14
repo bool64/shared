@@ -182,32 +182,29 @@ func decodeJSONNumbers(v interface{}) interface{} {
 		for k, e := range vv {
 			vv[k] = decodeJSONNumbers(e)
 		}
+
 		return vv
 	}
 
 	return v
 }
 
-// DecodeJSONNumber tries to decode a json.Number into a most appropriate type (unit64, int64, float64).
+// DecodeJSONNumber tries to decode a json.Number into the most appropriate type (unit64, int64, float64).
 // If nothing works, json.Number is returned as is.
 func DecodeJSONNumber(n json.Number) interface{} {
-	var v interface{} = n
-
 	if strings.Contains(n.String(), ".") {
 		if f, err := n.Float64(); err == nil {
-			v = f
+			return f
 		}
-	} else {
-		if u, err := strconv.ParseUint(n.String(), 10, 64); err == nil {
-			v = u
+	} else if u, err := strconv.ParseUint(n.String(), 10, 64); err == nil {
+		if u <= uint64(math.MaxInt64) {
+			return int64(u)
+		}
 
-			if u <= uint64(math.MaxInt64) {
-				v = int64(u)
-			}
-		} else if i, err := n.Int64(); err == nil {
-			v = i
-		}
+		return u
+	} else if i, err := n.Int64(); err == nil {
+		return i
 	}
 
-	return v
+	return n
 }
