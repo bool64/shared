@@ -111,6 +111,17 @@ func (v *Vars) Set(key string, val interface{}) {
 	}
 }
 
+// Delete removes variable by name.
+//
+// After Delete, Get reports the variable as not found, same as if it had
+// never been set.
+func (v *Vars) Delete(key string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	delete(v.vars, key)
+}
+
 // OnSet adds callback to invoke when variable is set.
 //
 // All callbacks are removed on Reset.
