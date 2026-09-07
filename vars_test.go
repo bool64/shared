@@ -35,6 +35,24 @@ func TestVars_GetAll(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{}, v.GetAll())
 }
 
+func TestVars_Delete(t *testing.T) {
+	v := shared.Vars{}
+	v.Set("k", "v")
+	v.Set("other", "unaffected")
+
+	v.Delete("k")
+
+	val, found := v.Get("k")
+	assert.False(t, found)
+	assert.Nil(t, val)
+	assert.Equal(t, map[string]interface{}{"other": "unaffected"}, v.GetAll())
+
+	// Deleting an already-absent (or never-set) key is a no-op, not an error.
+	v.Delete("k")
+	v.Delete("never-set")
+	assert.Equal(t, map[string]interface{}{"other": "unaffected"}, v.GetAll())
+}
+
 func TestVars_Fork(t *testing.T) {
 	v := shared.Vars{}
 	v.Set("k", "v")
